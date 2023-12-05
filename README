@@ -1,0 +1,34 @@
+Ідея проекту
+
+https://github.com/shafiab/HashtagCashtag
+https://medium.com/@atawfique21/how-to-save-browser-sessions-in-selenium-using-redis-and-flask-2beba9adad18
+
+Сайт в якому можна порівняти кориляцию криптовалют в залежності від твітів по цій криптовалюті
+Також треба написати фронт та задеполїти цей сайт 
+
+
+#TODO
+- scaling of scrapers
+
+#DONE
+- authorization
+
+TWITTER PARSER
+
+
+
+- scroling
+
+
+TO START:
+pip freeze > requirements.txt
+python -m pip freeze
+python3 -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+
+
+in 3 terminals:
+flask run
+redis-server
+python red.py
