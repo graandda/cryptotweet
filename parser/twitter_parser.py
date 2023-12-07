@@ -1,29 +1,24 @@
-# TODO: Make authorization
 import json
-import logging
 import time
 
-from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from selenium import webdriver
-import logging
 from red import conn
 
 
-class TwitterWorker():
+class TwitterWorker:
     ACCOUNT_DATA = {}
     URL = "https://twitter.com/login/"
     capabilities = DesiredCapabilities.CHROME
     # capabilities["loggingPrefs"] = {"performance": "ALL"}  # chromedriver < ~75
     capabilities["goog:loggingPrefs"] = {"performance": "ALL"}  # chromedriver 75+
 
-    def __init__(self):
+    def __init__(self, worker_code=None):
         self.WORKER_CODE = self.pick_account()
         self.SESSION_DATA_PATH = f"./twitter/session_{self.WORKER_CODE}"
         self.options = Options()
@@ -36,7 +31,6 @@ class TwitterWorker():
         check what account credentials free and pick them
         :return:
         """
-
         with open("./twitter/account_data.json", "r") as f:
             accounts = json.load(f)
 
@@ -80,7 +74,6 @@ class TwitterWorker():
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '[autocomplete="current-password"]'))).send_keys(
             self.ACCOUNT_DATA["PASSWORD"])
         wait.until(EC.element_to_be_clickable((By.XPATH, '//span[contains(text(), "Log in")]'))).click()
-        time.sleep(100)
 
     def start_twitter_session(self):
         # create instance of Chrome webdriver
@@ -99,52 +92,27 @@ class TwitterWorker():
         except Exception as ex:
             raise ex
 
-    # def write_session(self):
-    #     url = self.driver.command_executor._url
-    #     session_id = self.driver.session_id
-    #     f = open(f"./twitter/sessioninfo_{self.WORKER_CODE}.txt", "w")
-    #     f.write(f"{url}\n")
-    #     f.write(f"{session_id}")
-    #     f.close()
-    #     print('Wrote webdriver session details')
-    #
-    # def attach_to_session(self):
-    #     f = open(f"./twitter/sessioninfo_{self.WORKER_CODE}.txt", "r")
-    #     lines = f.readlines()
-    #     url = lines[0]
-    #     session_id = lines[1]
-    #     session_id.strip()
-    #     self.driver.session_id = session_id
-    #     # Replace the patched function with original function
-    #     return self
-
     def write_session(self):
         url = self.driver.command_executor._url
         session_id = self.driver.session_id
 
         # Store essential information in a dictionary
         session_info = {'url': url, 'session_id': session_id}
-
         # Serialize the dictionary to JSON
         serialized_info = json.dumps(session_info)
 
         # Store the serialized information in Redis or any other storage
         # For demonstration, assuming 'redis_conn' is a Redis connection
-        conn.set(f"session_info:{self.WORKER_CODE}", serialized_info)
+        conn.hset(f"session_info:{self.WORKER_CODE}", mapping={"data": serialized_info})
 
-    def attach_to_session(self):
-        # Retrieve the stored information from Redis
-        stored_info = conn.get(f"session_info:{self.WORKER_CODE}")
+    # def attach_to_session(self):
+    #     # Retrieve the stored information from Redis
+    #     stored_info = conn.hget(f"session_info:{self.WORKER_CODE}", "data")
+    #     # Deserialize the information from JSON
+    #     session_info = dict(json.loads(stored_info))
+    #     print(session_info['session_id'])
+    #     # Ensure 'options' is not None, provide a default ChromeOptions instance if needed
+    #     self.driver.session_id = session_info['session_id']
 
-        # Deserialize the information from JSON
-        session_info = json.loads(stored_info)
-
-        # Ensure 'options' is not None, provide a default ChromeOptions instance if needed
-        self.driver.session_id = session_info['session_id']
-
-        return self
-
-    def do_smth(self):
-        self.driver.get("https://google.com")
 
 

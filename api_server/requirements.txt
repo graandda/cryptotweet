@@ -1,0 +1,5 @@
+requests~=2.31.0
+flask~=3.0.0
+rq~=1.15.1
+redis~=5.0.1
+selenium~=4.15.2
