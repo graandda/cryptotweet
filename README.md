@@ -15,7 +15,7 @@
 
 [![Typing SVG](https://readme-typing-svg.herokuapp.com?color=%2336BCF7&lines=VERY+RAW+DIAGRAM)](https://git.io/typing-svg)
 
-![Website interface]((parser.png))
+![Website interface](parser.png)
 
  
 
