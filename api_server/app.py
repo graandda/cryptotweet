@@ -1,20 +1,27 @@
-import redis
 from flask import Flask
-from requests import get
+import redis
 
 
-conn = redis.Redis()
 # Initialize App
 app = Flask(__name__)
 
+#redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
+redis_client = redis.StrictRedis(host='redis', port=6379, db=0) # docker
 
 
-#Run parser
+def send_message_to_channel(channel, message):
+    redis_client.publish(channel, message)
+
+@app.route('/')
+def init():
+    return "OK"
+
+
 @app.route('/run1')
 def run1():
-    r = get("localhost:5050/run1")
-    return r
+    send_message_to_channel("parser_tasks", "login_to_twitter")
+    return "OK"
 
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=True, host='0.0.0.0')
+    app.run(host='0.0.0.0',debug=True, use_reloader=True)

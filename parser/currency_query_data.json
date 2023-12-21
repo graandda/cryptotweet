@@ -1,0 +1,10 @@
+{
+  "BTC": {
+    "query_words": ["bitcoin", "btc"],
+    "min_faves": "100"
+  },
+  "ETH": {
+    "query_words": ["ethereum", "eth"],
+    "min_faves": "100"
+  }
+}
