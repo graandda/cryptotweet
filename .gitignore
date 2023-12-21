@@ -160,4 +160,4 @@ cython_debug/
 #.idea/
 /parser/session_1/
 /parser/account_data.json
-/parser.png
+.idea
