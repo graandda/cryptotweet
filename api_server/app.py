@@ -23,5 +23,17 @@ def run1():
     return "OK"
 
 
+@app.route('/run2')
+def run2():
+    send_message_to_channel("parser_tasks", "make_search")
+    return "OK"
+
+
+@app.route('/run3')
+def run3():
+    send_message_to_channel("parser_tasks", "make_parse")
+    return "OK"
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0',debug=True, use_reloader=True)
