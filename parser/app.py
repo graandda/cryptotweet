@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 import time
 
 import redis
@@ -19,12 +20,12 @@ def callback(message):
 
 
 class TwitterWorker:
-    URL = "https://twitter.com/login/"
     capabilities = DesiredCapabilities.CHROME
     # capabilities["loggingPrefs"] = {"performance": "ALL"}  # chromedriver < ~75
     capabilities["goog:loggingPrefs"] = {"performance": "ALL"}  # chromedriver 75+
 
     def __init__(self):
+        self.URL = "https://twitter.com/login/"
         self.ACCOUNT_DATA = {}
         self.WORKER_CODE = self.pick_account()
         self.SESSION_DATA_PATH = f"session_{self.WORKER_CODE}"
@@ -62,7 +63,7 @@ class TwitterWorker:
                 )
                 return currencies_data[currency]
 
-    def load_options(self):
+    def load_options(self) -> None:
         """
         Load options into driver
         :return:
@@ -77,7 +78,7 @@ class TwitterWorker:
         self.options.add_argument("--no-sandbox")
         ##self.options.add_argument('--disable-dev-shm-usage') docker
 
-    def login(self):
+    def login(self) -> int:
         wait = WebDriverWait(self.driver, 200)
         # find username field
         wait.until(
@@ -124,7 +125,7 @@ class TwitterWorker:
             ).click()
         return 200
 
-    def start_twitter_session(self):
+    def start_twitter_session(self) -> None:
         # create instance of Chrome webdriver
         try:
             self.driver.get(self.URL)
@@ -141,16 +142,30 @@ class TwitterWorker:
         except Exception as ex:
             raise ex
 
-    def make_q(self):
-        # btc bitcoin  min_faves:97 lang:en since:2023-01-01
-        url = "https://twitter.com/search?f=top&q=btc%20bitcoin%20%20min_faves%3A97%20lang%3Aen%20since%3A2023-01-01&src=typed_query"
+    def make_search(self) -> None:
+        """
+        find all yesterday posts
+        """
+        lang = "en"
+        since = (datetime.now() - timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )  # get yesterday date
+        url = f"https://twitter.com/search?f=top&q={'%20'.join(word for word in self.currency['query_words'])}%20%20min_faves%3A{self.currency['min_faves']}%20lang%3A{lang}%20since%3A{since}&src=typed_query"
+        self.driver.get(url)
+
+    def delete_session(self):
+        redis_client.delete(f"instance:{self.WORKER_CODE}")
 
 
 if __name__ == "__main__":
     pubsub = redis_client.pubsub()
     pubsub.subscribe("parser_tasks")
-    driver = TwitterWorker()
 
+    try:
+        driver = TwitterWorker()
+    except Exception as Ex:
+        driver.delete_session()
+        raise Ex
     for message in pubsub.listen():
         print(message)
         if message["type"] == "message":
@@ -158,16 +173,21 @@ if __name__ == "__main__":
                 try:
                     callback(driver.start_twitter_session())
                 except Exception as ex:
+                    driver.delete_session()
                     callback(ex)
 
             if message["data"].decode() == "make_search":
                 try:
-                    callback(driver.start_twitter_session())
+                    callback(driver.make_search())
                 except Exception as ex:
+                    driver.delete_session()
                     callback(ex)
 
             if message["data"].decode() == "make_parse":
                 try:
                     callback(driver.start_twitter_session())
                 except Exception as ex:
+                    driver.delete_session()
                     callback(ex)
+
+        driver.delete_session()
