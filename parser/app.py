@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 from datetime import datetime, timedelta
 import time
 
@@ -14,8 +15,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
 
-
 redis_client = redis.Redis(port=6379, db=0)  # out docker
+
+
 # redis_client = redis.StrictRedis(host='redis', port=6379, db=0) # in docker
 
 
@@ -195,15 +197,21 @@ def parse_all_posts_on_page(page_source):
         pass
 
 
+# TODO: Make load into scv more efficient
 def load_post_to_csv(content):
     csv_filename = "output.csv"
-    header = ["Content"]
-    data = [content]
+    header = ["Author", "Content", "Replies", "Reposts", "Likes", "Views"]
+    file_path = "" + csv_filename
 
-    with open(csv_filename, mode="a", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        writer.writerow(header)
-        writer.writerow(data)
+    if os.path.exists(file_path):
+        with open(csv_filename, mode="a", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=header)
+            writer.writerow({"Content": content})
+    else:
+        with open(csv_filename, mode="a", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=header)
+            writer.writeheader()
+            writer.writerow({"Content": content})
 
 
 if __name__ == "__main__":
