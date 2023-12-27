@@ -1,8 +1,12 @@
+import csv
 import json
 from datetime import datetime, timedelta
 import time
 
+from bs4 import BeautifulSoup
+
 import redis
+from selenium.webdriver import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
@@ -11,8 +15,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
 
 
-redis_client = redis.Redis(port=6379, db=0)  # docker
-# redis_client = redis.StrictRedis(host='redis', port=6379, db=0) # docker
+redis_client = redis.Redis(port=6379, db=0)  # out docker
+# redis_client = redis.StrictRedis(host='redis', port=6379, db=0) # in docker
 
 
 def callback(message):
@@ -68,7 +72,6 @@ class TwitterWorker:
         Load options into driver
         :return:
         """
-
         self.options.add_argument(
             "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
@@ -78,8 +81,8 @@ class TwitterWorker:
         self.options.add_argument("--no-sandbox")
         ##self.options.add_argument('--disable-dev-shm-usage') docker
 
-    def login(self) -> int:
-        wait = WebDriverWait(self.driver, 200)
+    def login(self) -> str:
+        wait = WebDriverWait(self.driver, 50)
         # find username field
         wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, '[autocomplete="username"]'))
@@ -123,9 +126,9 @@ class TwitterWorker:
                     (By.XPATH, '//span[contains(text(), "Log in")]')
                 )
             ).click()
-        return 200
+        return "200: Making login..."
 
-    def start_twitter_session(self) -> None:
+    def start_twitter_session(self) -> str:
         # create instance of Chrome webdriver
         try:
             self.driver.get(self.URL)
@@ -141,8 +144,9 @@ class TwitterWorker:
                     raise ex
         except Exception as ex:
             raise ex
+        return "200: Starting session..."
 
-    def make_search(self) -> None:
+    def make_search(self) -> str:
         """
         find all yesterday posts
         """
@@ -152,9 +156,54 @@ class TwitterWorker:
         )  # get yesterday date
         url = f"https://twitter.com/search?f=top&q={'%20'.join(word for word in self.currency['query_words'])}%20%20min_faves%3A{self.currency['min_faves']}%20lang%3A{lang}%20since%3A{since}&src=typed_query"
         self.driver.get(url)
+        return "200: Making search..."
+
+    def do_scroll(self) -> None:
+        scrols_to_all_new_posts = 6
+        for i in range(scrols_to_all_new_posts + 1):
+            body = self.driver.find_element("tag name", "body")
+            body.send_keys(Keys.PAGE_DOWN)
+            # Wait for a while to let the content load
+            time.sleep(2)
+
+    def do_parse(self) -> str:
+        self.do_scroll()
+        time.sleep(3)
+        parse_all_posts_on_page(self.driver.page_source)
+
+        return "200: Parssing done!"
 
     def delete_session(self):
         redis_client.delete(f"instance:{self.WORKER_CODE}")
+
+
+def parse_all_posts_on_page(page_source):
+    # Parse the page source with BeautifulSoup
+    soup = BeautifulSoup(page_source, "html.parser")
+
+    # Find the div element with the specified data-testid
+    elements = soup.find_all("div", {"data-testid": "cellInnerDiv"})
+    count = 0
+    for element in elements:
+
+        if element:
+            count += 1
+            print(f"{count}.{element.text}")
+            load_post_to_csv(element.text)
+        else:
+            print("Element not found")
+        pass
+
+
+def load_post_to_csv(content):
+    csv_filename = "output.csv"
+    header = ["Content"]
+    data = [content]
+
+    with open(csv_filename, mode="a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(header)
+        writer.writerow(data)
 
 
 if __name__ == "__main__":
@@ -172,6 +221,9 @@ if __name__ == "__main__":
             if message["data"].decode() == "login_to_twitter":
                 try:
                     callback(driver.start_twitter_session())
+                    print(
+                        f"pick account number: {driver.WORKER_CODE} n/ with currency key: {driver.currency}"
+                    )
                 except Exception as ex:
                     driver.delete_session()
                     callback(ex)
@@ -185,7 +237,7 @@ if __name__ == "__main__":
 
             if message["data"].decode() == "make_parse":
                 try:
-                    callback(driver.start_twitter_session())
+                    callback(driver.do_parse())
                 except Exception as ex:
                     driver.delete_session()
                     callback(ex)

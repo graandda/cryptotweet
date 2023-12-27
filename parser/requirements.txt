@@ -4,3 +4,4 @@ rq~=1.15.1
 redis~=5.0.1
 selenium
 webdriver-manager
+bs4

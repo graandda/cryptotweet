@@ -346,5 +346,8 @@ pyrightconfig.json
 
 #user-data
 /parser/session_1/
+/parser/session_2/
 /parser/account_data.json
-
+/.idea
+/.DS_Store
+/parser/output.csv
